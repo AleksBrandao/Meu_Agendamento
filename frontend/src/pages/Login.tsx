@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
 
 export default function Login() {
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [erro, setErro] = useState('');
+  const navigate = useNavigate();
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -15,9 +17,11 @@ export default function Login() {
       });
       const token = response.data.auth_token;
       localStorage.setItem('token', token);
+      localStorage.setItem('user', email); // ✅ salva o nome de usuário
+
       setErro('');
       alert('Login realizado com sucesso!');
-      // redirecionar para o painel, etc.
+      navigate('/'); // redireciona para Home
     } catch (err) {
       setErro('Usuário ou senha inválidos.');
     }

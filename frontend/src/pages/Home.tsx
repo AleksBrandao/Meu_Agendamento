@@ -1,21 +1,29 @@
-import React from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useState } from "react"
+import { Link } from "react-router-dom"
+import Header from "../components/Header"
 
 export default function Home() {
+  const [username, setUsername] = useState<string | null>(null)
+
+  useEffect(() => {
+    const storedUser = localStorage.getItem("user") // supondo que você salva isso no login
+    if (storedUser) {
+      setUsername(storedUser)
+    }
+  }, [])
+
   return (
     <div className="min-h-screen bg-black text-white">
-      {/* Header */}
-      <header className="w-full px-6 py-4 flex justify-between items-center border-b border-gray-800">
-        <h1 className="text-2xl font-bold">fsw-barber</h1>
-        <nav>
-          <a
-            href="#services"
-            className="text-gray-300 hover:text-white transition-colors"
-          >
-            Serviços
-          </a>
-        </nav>
-      </header>
+      <Header />
+
+      {/* Saudação */}
+      <div className="text-center mt-4">
+        {username ? (
+          <p className="text-green-400">Olá, {username} 👋</p>
+        ) : (
+          <p className="text-gray-400">Você não está logado.</p>
+        )}
+      </div>
 
       {/* Hero Section */}
       <main className="flex flex-col items-center justify-center text-center px-4 py-20">
@@ -25,12 +33,13 @@ export default function Home() {
         <p className="text-gray-400 mb-8 max-w-md">
           Agendamentos rápidos, cortes modernos, barbearia profissional.
         </p>
-        <a
-          href="/agendar"
-          className="bg-white text-black px-6 py-3 rounded-full font-medium hover:bg-gray-200 transition"
+
+        <Link
+          to="/agendar"
+          className="bg-white text-black px-6 py-3 rounded-full font-medium hover:bg-gray-200 transition mb-4"
         >
           Agendar agora
-        </a>
+        </Link>
 
         <Link to="/meus-agendamentos" className="text-white underline">
           Ver meus agendamentos
@@ -42,5 +51,5 @@ export default function Home() {
         © {new Date().getFullYear()} fsw-barber. Todos os direitos reservados.
       </footer>
     </div>
-  );
+  )
 }
