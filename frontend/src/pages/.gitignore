@@ -1,0 +1,10 @@
+# Node
+node_modules/
+
+# Python / Django
+venv/
+__pycache__/
+*.sqlite3
+
+# Others
+.env
