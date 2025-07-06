@@ -22,10 +22,26 @@ export default function AdminHorarios() {
   const [diaSemana, setDiaSemana] = useState('0')
   const [hora, setHora] = useState('')
   const [horarios, setHorarios] = useState<Horario[]>([])
+  const [barbeariaId, setBarbeariaId] = useState<string>('')
   const token = localStorage.getItem('token')
 
   useEffect(() => {
     carregarHorarios()
+  }, [])
+
+  useEffect(() => {
+    async function buscarBarbearia() {
+      try {
+        const res = await axios.get('http://localhost:8000/api/minha-barbearia/', {
+          headers: { Authorization: `Token ${token}` },
+        })
+        setBarbeariaId(res.data.id.toString())
+      } catch {
+        toast.error('Erro ao carregar barbearia.')
+      }
+    }
+
+    buscarBarbearia()
   }, [])
 
   async function carregarHorarios() {
@@ -41,10 +57,19 @@ export default function AdminHorarios() {
 
   async function handleSalvar(e: React.FormEvent) {
     e.preventDefault()
+    if (!barbeariaId) {
+      toast.error('Nenhuma barbearia carregada.')
+      return
+    }
+
     try {
       await axios.post(
         'http://localhost:8000/api/horarios-disponiveis/',
-        { dia_semana: Number(diaSemana), hora },
+        {
+          barbearia: Number(barbeariaId),
+          dia_semana: Number(diaSemana),
+          hora
+        },
         { headers: { Authorization: `Token ${token}` } }
       )
       toast.success('Horário cadastrado!')

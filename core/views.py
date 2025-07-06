@@ -1,8 +1,20 @@
 from rest_framework import viewsets, permissions
-from .models import Servico, Agendamento, HorarioDisponivel
+from .models import Servico, Agendamento, HorarioDisponivel, Barbearia
 from .serializers import ServicoSerializer, AgendamentoSerializer, HorarioDisponivelSerializer
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.exceptions import ValidationError
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.response import Response
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def minha_barbearia(request):
+    try:
+        barbearia = Barbearia.objects.get(proprietario=request.user)
+        return Response({'id': barbearia.id, 'nome': barbearia.nome})
+    except Barbearia.DoesNotExist:
+        return Response({'erro': 'Barbearia não encontrada.'}, status=404)
+    
 
 class IsAdminOrReadOnly(permissions.BasePermission):
     def has_permission(self, request, view):
@@ -44,9 +56,17 @@ class HorarioDisponivelViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def perform_create(self, serializer):
-        serializer.save(usuario=self.request.user)
+        try:
+            barbearia = self.request.user.barbearia_set.first()
+            if not barbearia:
+                raise ValidationError("Usuário não possui barbearia cadastrada.")
+            serializer.save(barbearia=barbearia)
+        except Barbearia.DoesNotExist:
+            raise ValidationError("Usuário não possui barbearia vinculada.")
+
 
     def get_queryset(self):
-        return HorarioDisponivel.objects.filter(usuario=self.request.user)
+        return HorarioDisponivel.objects.filter(barbearia__proprietario=self.request.user)
+
 
 

@@ -8,6 +8,7 @@ import AgendamentosPage from './pages/AgendamentosPage'
 import AdminServicos from './pages/AdminServicos'
 import { ToastContainer } from 'react-toastify'
 import AdminHorarios from './pages/AdminHorarios'
+import MinhaBarbearia from './pages/MinhaBarbearia'
 
 
 export default function App() {
@@ -22,6 +23,8 @@ export default function App() {
         <Route path="/meus-agendamentos" element={<AgendamentosPage />} />
         <Route path="/admin/servicos" element={<AdminServicos />} />
         <Route path="/admin/horarios" element={<AdminHorarios />} />
+        <Route path="/minha_barbearia" element={<MinhaBarbearia />} />
+        
       </Routes>
 
       {/* Toast visível em qualquer rota */}
