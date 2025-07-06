@@ -1,9 +1,8 @@
 from rest_framework import viewsets, permissions
-from .models import Servico
-from .serializers import ServicoSerializer
-from .models import Agendamento
-from .serializers import AgendamentoSerializer
-from rest_framework.permissions import IsAuthenticated
+from .models import Servico, Agendamento, HorarioDisponivel
+from .serializers import ServicoSerializer, AgendamentoSerializer, HorarioDisponivelSerializer
+from rest_framework.permissions import IsAuthenticated, IsAdminUser
+from rest_framework.exceptions import ValidationError
 
 class IsAdminOrReadOnly(permissions.BasePermission):
     def has_permission(self, request, view):
@@ -29,6 +28,25 @@ class AgendamentoViewSet(viewsets.ModelViewSet):
         return Agendamento.objects.filter(usuario=self.request.user)
 
     def perform_create(self, serializer):
+        data = serializer.validated_data.get("data")
+        horario = serializer.validated_data.get("horario")
+
+        # Verifica se o horário já está agendado
+        conflito = Agendamento.objects.filter(data=data, horario=horario).exists()
+        if conflito:
+            raise ValidationError("Horário indisponível. Escolha outro horário.")
+
         serializer.save(usuario=self.request.user)
+        
+class HorarioDisponivelViewSet(viewsets.ModelViewSet):
+    queryset = HorarioDisponivel.objects.all()
+    serializer_class = HorarioDisponivelSerializer
+    permission_classes = [IsAuthenticated]
+
+    def perform_create(self, serializer):
+        serializer.save(usuario=self.request.user)
+
+    def get_queryset(self):
+        return HorarioDisponivel.objects.filter(usuario=self.request.user)
 
 

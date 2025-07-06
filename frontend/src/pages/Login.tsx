@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
 
 export default function Login() {
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
-  const [erro, setErro] = useState('');
   const navigate = useNavigate();
 
   async function handleLogin(e: React.FormEvent) {
@@ -15,15 +15,14 @@ export default function Login() {
         username: email,
         password: senha,
       });
+
       const token = response.data.auth_token;
       localStorage.setItem('token', token);
-      localStorage.setItem('user', email); // ✅ salva o nome de usuário
 
-      setErro('');
-      alert('Login realizado com sucesso!');
-      navigate('/'); // redireciona para Home
+      toast.success('Login realizado com sucesso!');
+      navigate('/');
     } catch (err) {
-      setErro('Usuário ou senha inválidos.');
+      toast.error('Usuário ou senha inválidos.');
     }
   }
 
@@ -31,7 +30,6 @@ export default function Login() {
     <div className="min-h-screen flex items-center justify-center bg-black text-white">
       <form onSubmit={handleLogin} className="bg-gray-900 p-8 rounded-lg shadow-md w-full max-w-sm">
         <h2 className="text-2xl font-bold mb-6 text-center">Entrar</h2>
-        {erro && <p className="text-red-500 text-sm mb-4">{erro}</p>}
         <input
           type="email"
           placeholder="E-mail"

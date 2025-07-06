@@ -7,3 +7,4 @@ urlpatterns = [
     path('auth/', include('djoser.urls.authtoken')),
     path('api/', include('core.urls')),  # <-- aqui!
 ]
+
