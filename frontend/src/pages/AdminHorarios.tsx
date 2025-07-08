@@ -47,6 +47,7 @@ export default function AdminHorarios() {
   ]);
   const [inicio, setInicio] = useState("08:00");
   const [fim, setFim] = useState("18:00");
+  const [duracaoPadrao, setDuracaoPadrao] = useState(60)
   const [semanas, setSemanas] = useState(1);
   const [almocoInicio, setAlmocoInicio] = useState("12:00");
   const [almocoFim, setAlmocoFim] = useState("13:00");
@@ -69,12 +70,12 @@ export default function AdminHorarios() {
   }
 
   function gerarGradeBase() {
-    const novaGrade: GradeHorarios = {}
+    const novaGrade: GradeHorarios = { ...grade }
     const iniMin = horaParaMinutos(inicio)
     const fimMin = horaParaMinutos(fim)
     const almocoIniMin = horaParaMinutos(almocoInicio)
     const almocoFimMin = horaParaMinutos(almocoFim)
-    const duracao = 60 // duração fixa por padrão
+    const duracao = duracaoPadrao // ← usa valor selecionado
   
     let atual = iniMin
     while (atual + duracao <= fimMin) {
@@ -85,9 +86,13 @@ export default function AdminHorarios() {
   
       if (!estaNoAlmoco) {
         const horaStr = minutosParaHora(atual)
-        novaGrade[horaStr] = {}
+        if (!novaGrade[horaStr]) novaGrade[horaStr] = {}
+  
         diasDaSemana.forEach(({ value }) => {
-          if (diasSelecionados.includes(value)) {
+          if (
+            diasSelecionados.includes(value) &&
+            novaGrade[horaStr][value] === undefined
+          ) {
             novaGrade[horaStr][value] = {
               ativo: true,
               duracao
@@ -96,16 +101,45 @@ export default function AdminHorarios() {
         })
   
         atual += duracao
-        if (usarIntervaloEntreHorarios) {
-          atual += intervaloEntreHorarios
-        }
+        if (usarIntervaloEntreHorarios) atual += intervaloEntreHorarios
       } else {
-        atual += 30 // avança meio bloco se estiver dentro do almoço
+        atual += 30
       }
     }
   
     setGrade(novaGrade)
   }
+  
+  async function handleSalvarHorarios() {
+    const horariosParaSalvar = []
+    Object.entries(grade).forEach(([hora, dias]) => {
+      Object.entries(dias).forEach(([dia, info]) => {
+        if (info.ativo) {
+          horariosParaSalvar.push({
+            diaSemana: Number(dia),
+            hora,
+            duracao: info.duracao
+          })
+        }
+      })
+    })
+
+    try {
+      const res = await fetch('/api/salvar-horarios', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(horariosParaSalvar)
+      })
+
+      if (res.ok) alert('Horários salvos com sucesso!')
+      else alert('Erro ao salvar. Verifique o backend.')
+    } catch (err) {
+      console.error(err)
+      alert('Erro de conexão com o servidor.')
+    }
+  }
+
+  
   
 
   function haConflito(hora: string, dia: number, novaDuracao: number): boolean {
@@ -121,30 +155,54 @@ export default function AdminHorarios() {
     });
   }
 
-  function toggleCelula(hora: string, dia: number) {
+  function toggleCelula(hora: string, dia: number, criarSeInexistente = false) {
     setGrade(prev => {
       const novaGrade = { ...prev }
   
-      if (!novaGrade[hora]) novaGrade[hora] = {}
-  
-      if (novaGrade[hora][dia]?.ativo) {
-        // Excluir a célula ativa
-        delete novaGrade[hora][dia]
-  
-        // Se o objeto ficar vazio, remover o horário completamente
-        if (Object.keys(novaGrade[hora]).length === 0) {
-          delete novaGrade[hora]
-        }
-      } else {
-        novaGrade[hora][dia] = {
-          ativo: true,
-          duracao: 60
-        }
+      // recria linha se necessário
+      if (!novaGrade[hora]) {
+        if (!criarSeInexistente) return prev;
+        novaGrade[hora] = {};
       }
   
-      return { ...novaGrade }
-    })
+      // força cópia da linha para garantir reatividade
+      const novaLinha = { ...novaGrade[hora] };
+  
+      // criar nova célula se clicado em '+'
+      if (!novaLinha[dia]) {
+        if (!criarSeInexistente) return prev;
+  
+        novaLinha[dia] = {
+          ativo: true,
+          duracao: 60
+        };
+  
+        novaGrade[hora] = novaLinha;
+        return { ...novaGrade };
+      }
+  
+      // se ativa, excluir
+      if (novaLinha[dia].ativo) {
+        delete novaLinha[dia];
+  
+        // se linha vazia, remover também
+        if (Object.keys(novaLinha).length === 0) {
+          delete novaGrade[hora];
+        } else {
+          novaGrade[hora] = novaLinha;
+        }
+  
+        return { ...novaGrade };
+      }
+  
+      return prev;
+    });
   }
+  
+  
+  
+  
+  
   
 
   function editarDuracao(hora: string, dia: number, duracao: number) {
@@ -214,6 +272,13 @@ export default function AdminHorarios() {
             className="w-full"
           />
         </label>
+        <label>Duração padrão:
+  <select value={duracaoPadrao} onChange={e => setDuracaoPadrao(+e.target.value)} className="w-full">
+    {[30, 45, 60, 90, 120].map(d => (
+      <option key={d} value={d}>{d} minutos</option>
+    ))}
+  </select>
+</label>
         <label>
           Semanas para replicar:
           <input
@@ -286,7 +351,17 @@ export default function AdminHorarios() {
         >
           Limpar Horários
         </button>
+        
+        <button
+    onClick={handleSalvarHorarios}
+    className="px-4 py-2 bg-blue-600 text-white rounded shadow hover:bg-blue-700"
+  >
+    Confirmar
+  </button>
+
+  
       </div>
+      
       <div className="overflow-auto mt-6">
         <table className="min-w-full border text-center">
           <thead>
@@ -392,7 +467,7 @@ export default function AdminHorarios() {
                                 {info.duracao} min ✎
                               </button>
                               <button
-                                onClick={() => toggleCelula(hora, dia)}
+                                onClick={() => toggleCelula(hora, dia, true)}
                                 className="text-red-600 text-xs hover:text-red-800"
                               >
                                 ✕
@@ -405,7 +480,7 @@ export default function AdminHorarios() {
                       return (
                         <td key={dia} className="border">
                           <button
-                            onClick={() => toggleCelula(hora, dia)}
+                            onClick={() => toggleCelula(hora, dia, true)}
                             className="text-gray-300 text-sm hover:text-green-500"
                           >
                             +
