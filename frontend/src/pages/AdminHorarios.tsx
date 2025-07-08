@@ -1,139 +1,425 @@
-import { useEffect, useState } from 'react'
-import axios from 'axios'
-import { toast } from 'react-toastify'
+import React, { useState } from "react";
+import {
+  addDays,
+  addMinutes,
+  format,
+  isBefore,
+  setHours,
+  setMinutes,
+  startOfDay,
+} from "date-fns";
 
-type Horario = {
-  id: number
-  dia_semana: number
-  hora: string
+const diasDaSemana = [
+  { label: "Domingo", value: 0 },
+  { label: "Segunda", value: 1 },
+  { label: "Terça", value: 2 },
+  { label: "Quarta", value: 3 },
+  { label: "Quinta", value: 4 },
+  { label: "Sexta", value: 5 },
+  { label: "Sábado", value: 6 },
+];
+
+const DURACOES = [30, 45, 60, 90, 120];
+
+function horaParaMinutos(hora: string): number {
+  const [h, m] = hora.split(":").map(Number);
+  return h * 60 + m;
 }
 
-const diasSemana = [
-  'Segunda-feira',
-  'Terça-feira',
-  'Quarta-feira',
-  'Quinta-feira',
-  'Sexta-feira',
-  'Sábado',
-  'Domingo'
-]
+function minutosParaHora(min: number): string {
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`;
+}
+
+type GradeHorarios = {
+  [hora: string]: {
+    [dia: number]: {
+      ativo: boolean;
+      duracao: number;
+    };
+  };
+};
 
 export default function AdminHorarios() {
-  const [diaSemana, setDiaSemana] = useState('0')
-  const [hora, setHora] = useState('')
-  const [horarios, setHorarios] = useState<Horario[]>([])
-  const [barbeariaId, setBarbeariaId] = useState<string>('')
-  const token = localStorage.getItem('token')
+  const [diasSelecionados, setDiasSelecionados] = useState<number[]>([
+    1, 2, 3, 4, 5,
+  ]);
+  const [inicio, setInicio] = useState("08:00");
+  const [fim, setFim] = useState("18:00");
+  const [semanas, setSemanas] = useState(1);
+  const [almocoInicio, setAlmocoInicio] = useState("12:00");
+  const [almocoFim, setAlmocoFim] = useState("13:00");
+  const [usarAlmoco, setUsarAlmoco] = useState(false);
+  const [usarIntervaloEntreHorarios, setUsarIntervaloEntreHorarios] =
+    useState(false);
+  const [intervaloEntreHorarios, setIntervaloEntreHorarios] = useState(30);
+  const [grade, setGrade] = useState<GradeHorarios>({});
+  const [editando, setEditando] = useState<{
+    hora: string;
+    dia: number;
+  } | null>(null);
 
-  useEffect(() => {
-    carregarHorarios()
-  }, [])
+  const intervaloMinutos = 30; // visual de 30 em 30 sempre
 
-  useEffect(() => {
-    async function buscarBarbearia() {
-      try {
-        const res = await axios.get('http://localhost:8000/api/minha-barbearia/', {
-          headers: { Authorization: `Token ${token}` },
+  function toggleDia(dia: number) {
+    setDiasSelecionados((prev) =>
+      prev.includes(dia) ? prev.filter((d) => d !== dia) : [...prev, dia]
+    );
+  }
+
+  function gerarGradeBase() {
+    const novaGrade: GradeHorarios = {}
+    const iniMin = horaParaMinutos(inicio)
+    const fimMin = horaParaMinutos(fim)
+    const almocoIniMin = horaParaMinutos(almocoInicio)
+    const almocoFimMin = horaParaMinutos(almocoFim)
+    const duracao = 60 // duração fixa por padrão
+  
+    let atual = iniMin
+    while (atual + duracao <= fimMin) {
+      const estaNoAlmoco = usarAlmoco && (
+        (atual >= almocoIniMin && atual < almocoFimMin) ||
+        (atual + duracao > almocoIniMin && atual < almocoFimMin)
+      )
+  
+      if (!estaNoAlmoco) {
+        const horaStr = minutosParaHora(atual)
+        novaGrade[horaStr] = {}
+        diasDaSemana.forEach(({ value }) => {
+          if (diasSelecionados.includes(value)) {
+            novaGrade[horaStr][value] = {
+              ativo: true,
+              duracao
+            }
+          }
         })
-        setBarbeariaId(res.data.id.toString())
-      } catch {
-        toast.error('Erro ao carregar barbearia.')
+  
+        atual += duracao
+        if (usarIntervaloEntreHorarios) {
+          atual += intervaloEntreHorarios
+        }
+      } else {
+        atual += 30 // avança meio bloco se estiver dentro do almoço
       }
     }
+  
+    setGrade(novaGrade)
+  }
+  
 
-    buscarBarbearia()
-  }, [])
-
-  async function carregarHorarios() {
-    try {
-      const res = await axios.get('http://localhost:8000/api/horarios-disponiveis/', {
-        headers: { Authorization: `Token ${token}` }
-      })
-      setHorarios(res.data)
-    } catch {
-      toast.error('Erro ao carregar horários.')
-    }
+  function haConflito(hora: string, dia: number, novaDuracao: number): boolean {
+    const horaMin = horaParaMinutos(hora);
+    const novaFim = horaMin + novaDuracao;
+    return Object.entries(grade).some(([outraHora, colDias]) => {
+      if (outraHora === hora) return false;
+      const item = colDias[dia];
+      if (!item?.ativo) return false;
+      const outraIni = horaParaMinutos(outraHora);
+      const outraFim = outraIni + item.duracao;
+      return horaMin < outraFim && novaFim > outraIni;
+    });
   }
 
-  async function handleSalvar(e: React.FormEvent) {
-    e.preventDefault()
-    if (!barbeariaId) {
-      toast.error('Nenhuma barbearia carregada.')
-      return
-    }
+  function toggleCelula(hora: string, dia: number) {
+    setGrade(prev => {
+      const novaGrade = { ...prev }
+  
+      if (!novaGrade[hora]) novaGrade[hora] = {}
+  
+      if (novaGrade[hora][dia]?.ativo) {
+        // Excluir a célula ativa
+        delete novaGrade[hora][dia]
+  
+        // Se o objeto ficar vazio, remover o horário completamente
+        if (Object.keys(novaGrade[hora]).length === 0) {
+          delete novaGrade[hora]
+        }
+      } else {
+        novaGrade[hora][dia] = {
+          ativo: true,
+          duracao: 60
+        }
+      }
+  
+      return { ...novaGrade }
+    })
+  }
+  
 
-    try {
-      await axios.post(
-        'http://localhost:8000/api/horarios-disponiveis/',
-        {
-          barbearia: Number(barbeariaId),
-          dia_semana: Number(diaSemana),
-          hora
+  function editarDuracao(hora: string, dia: number, duracao: number) {
+    if (haConflito(hora, dia, duracao)) {
+      alert("Conflito com outro horário ativo.");
+      return;
+    }
+    setGrade((prev) => ({
+      ...prev,
+      [hora]: {
+        ...prev[hora],
+        [dia]: {
+          ...prev[hora][dia],
+          duracao,
         },
-        { headers: { Authorization: `Token ${token}` } }
-      )
-      toast.success('Horário cadastrado!')
-      setHora('')
-      setDiaSemana('0')
-      carregarHorarios()
-    } catch {
-      toast.error('Erro ao salvar horário (evite duplicados).')
-    }
+      },
+    }));
+    setEditando(null);
   }
 
-  async function excluirHorario(id: number) {
-    if (!confirm('Tem certeza que deseja excluir este horário?')) return
-    try {
-      await axios.delete(`http://localhost:8000/api/horarios-disponiveis/${id}/`, {
-        headers: { Authorization: `Token ${token}` }
-      })
-      toast.success('Horário excluído.')
-      carregarHorarios()
-    } catch {
-      toast.error('Erro ao excluir.')
-    }
+  function limparHorarios() {
+    setGrade({});
   }
+
+  const iniMin = horaParaMinutos(inicio);
+  const fimMin = horaParaMinutos(fim);
+  const horariosMinutos = [];
+  for (let min = iniMin; min < fimMin; min += intervaloMinutos) {
+    horariosMinutos.push(min);
+  }
+  const pulos: { [dia_hora: string]: boolean } = {};
 
   return (
-    <div className="min-h-screen bg-black text-white p-8">
-      <h1 className="text-3xl font-bold mb-6 text-center">Horários Disponíveis</h1>
-
-      <form onSubmit={handleSalvar} className="max-w-md mx-auto mb-8">
-        <select
-          className="w-full p-2 mb-4 rounded bg-gray-800"
-          value={diaSemana}
-          onChange={(e) => setDiaSemana(e.target.value)}
-        >
-          {diasSemana.map((dia, index) => (
-            <option key={index} value={index}>
-              {dia}
-            </option>
-          ))}
-        </select>
-        <input
-          type="time"
-          className="w-full p-2 mb-4 rounded bg-gray-800"
-          value={hora}
-          onChange={(e) => setHora(e.target.value)}
-          required
-        />
-        <button type="submit" className="w-full bg-white text-black py-2 rounded">
-          Adicionar Horário
-        </button>
-      </form>
-
-      <div className="max-w-2xl mx-auto">
-        {horarios.map((h) => (
-          <div key={h.id} className="bg-gray-800 p-4 rounded mb-2 flex justify-between items-center">
-            <span>
-              {diasSemana[h.dia_semana]} - {h.hora.slice(0, 5)}
-            </span>
-            <button onClick={() => excluirHorario(h.id)} className="text-red-400">
-              Excluir
-            </button>
-          </div>
+    <div className="p-4 max-w-6xl mx-auto space-y-4">
+      <h2 className="text-xl font-bold">Gerador de Horários</h2>
+      <div className="flex flex-wrap gap-2">
+        {diasDaSemana.map(({ label, value }) => (
+          <button
+            key={value}
+            onClick={() => toggleDia(value)}
+            className={`px-3 py-1 rounded-full border ${
+              diasSelecionados.includes(value)
+                ? "bg-blue-500 text-white"
+                : "bg-gray-200"
+            }`}
+          >
+            {label}
+          </button>
         ))}
       </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <label>
+          Início:
+          <input
+            type="time"
+            value={inicio}
+            onChange={(e) => setInicio(e.target.value)}
+            className="w-full"
+          />
+        </label>
+        <label>
+          Fim:
+          <input
+            type="time"
+            value={fim}
+            onChange={(e) => setFim(e.target.value)}
+            className="w-full"
+          />
+        </label>
+        <label>
+          Semanas para replicar:
+          <input
+            type="number"
+            value={semanas}
+            onChange={(e) => setSemanas(+e.target.value)}
+            className="w-full"
+          />
+        </label>
+        <label className="flex gap-2 items-center">
+          <input
+            type="checkbox"
+            checked={usarAlmoco}
+            onChange={(e) => setUsarAlmoco(e.target.checked)}
+          />
+          Considerar horário de almoço
+        </label>
+        {usarAlmoco && (
+          <>
+            <label>
+              Início almoço:
+              <input
+                type="time"
+                value={almocoInicio}
+                onChange={(e) => setAlmocoInicio(e.target.value)}
+                className="w-full"
+              />
+            </label>
+            <label>
+              Fim almoço:
+              <input
+                type="time"
+                value={almocoFim}
+                onChange={(e) => setAlmocoFim(e.target.value)}
+                className="w-full"
+              />
+            </label>
+          </>
+        )}
+        <label className="flex gap-2 items-center">
+          <input
+            type="checkbox"
+            checked={usarIntervaloEntreHorarios}
+            onChange={(e) => setUsarIntervaloEntreHorarios(e.target.checked)}
+          />
+          Incluir intervalo entre horários
+        </label>
+        {usarIntervaloEntreHorarios && (
+          <label>
+            Intervalo entre horários (min):
+            <input
+              type="number"
+              value={intervaloEntreHorarios}
+              onChange={(e) => setIntervaloEntreHorarios(+e.target.value)}
+              className="w-full"
+            />
+          </label>
+        )}
+      </div>
+      <div className="flex gap-4">
+        <button
+          onClick={gerarGradeBase}
+          className="px-4 py-2 bg-green-600 text-white rounded shadow"
+        >
+          Gerar Grade Base
+        </button>
+        <button
+          onClick={limparHorarios}
+          className="px-4 py-2 bg-red-600 text-white rounded shadow"
+        >
+          Limpar Horários
+        </button>
+      </div>
+      <div className="overflow-auto mt-6">
+        <table className="min-w-full border text-center">
+          <thead>
+            <tr>
+              <th className="border p-1">Horário</th>
+              {diasDaSemana.map(({ label, value }) => (
+                <th key={value} className="border px-2 py-1">
+                  {label}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {horariosMinutos.map((min) => {
+              const hora = minutosParaHora(min);
+              return (
+                <tr key={hora}>
+                  <td className="border font-semibold">{hora}</td>
+                  {diasDaSemana.map(({ value: dia }) => {
+                    const key = `${hora}_${dia}`;
+                    if (pulos[key]) return null;
+
+                    const almocoIniMin = horaParaMinutos(almocoInicio);
+                    const almocoFimMin = horaParaMinutos(almocoFim); // <--- corrigido
+                    const estaNoAlmoco =
+                      usarAlmoco && min >= almocoIniMin && min < almocoFimMin;
+
+                      const temHorarioAnterior = Object.entries(grade).some(([h, config]) => {
+                        const hMin = horaParaMinutos(h);
+                        const conf = config?.[dia];
+                        return conf?.ativo && hMin + conf.duracao === min;
+                      });
+                      
+                      const ehIntervalo =
+                        usarIntervaloEntreHorarios &&
+                        diasSelecionados.includes(dia) &&
+                        !estaNoAlmoco &&
+                        temHorarioAnterior &&
+                        Object.values(grade[minutosParaHora(min)] ?? {}).every((c) => !c.ativo);
+                      
+                      
+
+                    if (estaNoAlmoco && diasSelecionados.includes(dia)) {
+                      return (
+                        <td
+                          key={dia}
+                          className="border bg-gray-100 text-gray-400 text-xs"
+                        >
+                          Almoço
+                        </td>
+                      );
+                    }
+
+                    if (ehIntervalo) {
+                      return (
+                        <td
+                          key={dia}
+                          className="border bg-yellow-50 text-yellow-500 text-xs"
+                        >
+                          Intervalo
+                        </td>
+                      );
+                    }
+
+                    const info = grade[hora]?.[dia];
+                    if (info?.ativo) {
+                      const rowSpan = Math.ceil(
+                        info.duracao / intervaloMinutos
+                      );
+                      for (let i = 1; i < rowSpan; i++) {
+                        const pular = minutosParaHora(
+                          min + i * intervaloMinutos
+                        );
+                        pulos[`${pular}_${dia}`] = true;
+                      }
+
+                      return (
+                        <td
+                          key={dia}
+                          rowSpan={rowSpan}
+                          className="border align-middle"
+                        >
+                          {editando?.hora === hora && editando.dia === dia ? (
+                            <select
+                              value={info.duracao}
+                              onChange={(e) =>
+                                editarDuracao(hora, dia, +e.target.value)
+                              }
+                              className="text-sm"
+                            >
+                              {DURACOES.map((d) => (
+                                <option key={d} value={d}>
+                                  {d} min
+                                </option>
+                              ))}
+                            </select>
+                          ) : (
+                            <div className="flex flex-col items-center gap-1">
+                              <button
+                                onClick={() => setEditando({ hora, dia })}
+                                className="bg-blue-100 text-blue-800 px-2 rounded-full text-sm hover:bg-blue-200"
+                              >
+                                {info.duracao} min ✎
+                              </button>
+                              <button
+                                onClick={() => toggleCelula(hora, dia)}
+                                className="text-red-600 text-xs hover:text-red-800"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          )}
+                        </td>
+                      );
+                    } else {
+                      return (
+                        <td key={dia} className="border">
+                          <button
+                            onClick={() => toggleCelula(hora, dia)}
+                            className="text-gray-300 text-sm hover:text-green-500"
+                          >
+                            +
+                          </button>
+                        </td>
+                      );
+                    }
+                  })}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
-  )
+  );
 }

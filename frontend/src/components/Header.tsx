@@ -41,6 +41,7 @@ export default function Header() {
             <Link to="/admin/servicos" className="hover:text-gray-300 transition">
               Admin
             </Link>
+            <Link to="/admin/horarios">Gerenciar horários</Link>
             <button
               onClick={handleLogout}
               className="ml-2 bg-red-600 px-3 py-1 rounded text-white hover:bg-red-500 transition"
