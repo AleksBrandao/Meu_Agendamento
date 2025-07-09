@@ -5,6 +5,7 @@ from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.exceptions import ValidationError
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
+from datetime import datetime
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -15,6 +16,37 @@ def minha_barbearia(request):
     except Barbearia.DoesNotExist:
         return Response({'erro': 'Barbearia não encontrada.'}, status=404)
     
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def salvar_varios_horarios(request):
+    barbearia = request.user.barbearia_set.first()
+    if not barbearia:
+        return Response({"erro": "Usuário não possui barbearia vinculada."}, status=400)
+
+    dados = request.data
+    if not isinstance(dados, list):
+        return Response({"erro": "Formato inválido. Esperado uma lista."}, status=400)
+
+    novos = []
+    for item in dados:
+        try:
+            hora = datetime.strptime(item['hora'], "%H:%M").time()
+            novos.append(HorarioDisponivel(
+                barbearia=barbearia,
+                dia_semana=item['diaSemana'],
+                hora=hora,
+                duracao=item.get('duracao', 60)
+            ))
+        except Exception as e:
+            return Response({"erro": str(e)}, status=400)
+
+    # Limpa os antigos
+    HorarioDisponivel.objects.filter(barbearia=barbearia).delete()
+
+    # Cria em lote
+    HorarioDisponivel.objects.bulk_create(novos)
+    return Response({"mensagem": "Horários salvos com sucesso!"})
+ 
 
 class IsAdminOrReadOnly(permissions.BasePermission):
     def has_permission(self, request, view):
@@ -41,10 +73,10 @@ class AgendamentoViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         data = serializer.validated_data.get("data")
-        horario = serializer.validated_data.get("horario")
+        hora = serializer.validated_data.get("hora")  # ← nome correto
 
         # Verifica se o horário já está agendado
-        conflito = Agendamento.objects.filter(data=data, horario=horario).exists()
+        conflito = Agendamento.objects.filter(data=data, hora=hora).exists()
         if conflito:
             raise ValidationError("Horário indisponível. Escolha outro horário.")
 

@@ -111,7 +111,7 @@ export default function AdminHorarios() {
   }
   
   async function handleSalvarHorarios() {
-    const horariosParaSalvar = []
+    const horariosParaSalvar = [];
     Object.entries(grade).forEach(([hora, dias]) => {
       Object.entries(dias).forEach(([dia, info]) => {
         if (info.ativo) {
@@ -119,25 +119,31 @@ export default function AdminHorarios() {
             diaSemana: Number(dia),
             hora,
             duracao: info.duracao
-          })
+          });
         }
-      })
-    })
-
+      });
+    });
+  
+    const token = localStorage.getItem('token');  // ✅ PEGAR O TOKEN AQUI
+  
     try {
-      const res = await fetch('/api/salvar-horarios', {
+      const res = await fetch('/api/salvar-horarios/', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Token ${token}`  // ✅ AGORA FUNCIONA
+        },
         body: JSON.stringify(horariosParaSalvar)
-      })
-
-      if (res.ok) alert('Horários salvos com sucesso!')
-      else alert('Erro ao salvar. Verifique o backend.')
+      });
+  
+      if (res.ok) alert('Horários salvos com sucesso!');
+      else alert('Erro ao salvar. Verifique o backend.');
     } catch (err) {
-      console.error(err)
-      alert('Erro de conexão com o servidor.')
+      console.error(err);
+      alert('Erro de conexão com o servidor.');
     }
   }
+  
 
   
   

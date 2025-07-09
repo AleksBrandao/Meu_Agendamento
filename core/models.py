@@ -40,6 +40,7 @@ class HorarioDisponivel(models.Model):
     barbearia = models.ForeignKey(Barbearia, on_delete=models.CASCADE, related_name='horarios_disponiveis')
     dia_semana = models.IntegerField(choices=DIA_SEMANA_CHOICES)
     hora = models.TimeField()
+    duracao = models.PositiveIntegerField(default=60)  # ← adicione isto
 
     class Meta:
         unique_together = ['barbearia', 'dia_semana', 'hora']
