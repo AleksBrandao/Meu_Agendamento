@@ -47,6 +47,36 @@ def salvar_varios_horarios(request):
     HorarioDisponivel.objects.bulk_create(novos)
     return Response({"mensagem": "Horários salvos com sucesso!"})
  
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def horarios_disponiveis_para_data(request):
+    data_str = request.GET.get('data')
+    if not data_str:
+        return Response({"erro": "Data não informada"}, status=400)
+
+    try:
+        data = datetime.strptime(data_str, '%Y-%m-%d').date()
+        dia_semana = data.weekday()  # 0 = segunda
+
+        barbearia = request.user.barbearia_set.first()
+        if not barbearia:
+            return Response({"erro": "Usuário não possui barbearia vinculada."}, status=400)
+
+        horarios = HorarioDisponivel.objects.filter(
+            barbearia=barbearia,
+            dia_semana=dia_semana
+        ).values_list('hora', flat=True)
+
+        agendados = Agendamento.objects.filter(
+            data=data
+        ).values_list('hora', flat=True)
+
+        disponiveis = sorted(set(horarios) - set(agendados))
+
+        return Response([h.strftime('%H:%M:%S') for h in disponiveis])
+    except Exception as e:
+        return Response({"erro": str(e)}, status=500)
+
 
 class IsAdminOrReadOnly(permissions.BasePermission):
     def has_permission(self, request, view):

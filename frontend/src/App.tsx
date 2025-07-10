@@ -9,6 +9,8 @@ import AdminServicos from './pages/AdminServicos'
 import { ToastContainer } from 'react-toastify'
 import AdminHorarios from './pages/AdminHorarios'
 import MinhaBarbearia from './pages/MinhaBarbearia'
+import 'react-datepicker/dist/react-datepicker.css';
+import PainelAdminAgendamentos from './pages/admin/PainelAdminAgendamentos'
 
 
 export default function App() {
@@ -24,7 +26,7 @@ export default function App() {
         <Route path="/admin/servicos" element={<AdminServicos />} />
         <Route path="/admin/horarios" element={<AdminHorarios />} />
         <Route path="/minha_barbearia" element={<MinhaBarbearia />} />
-        
+        <Route path="/admin/agendamentos" element={<PainelAdminAgendamentos />} />
       </Routes>
 
       {/* Toast visível em qualquer rota */}
