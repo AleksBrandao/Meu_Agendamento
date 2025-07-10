@@ -1,19 +1,19 @@
-import { useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 
 export default function Header() {
-  const [token, setToken] = useState<string | null>(null)
-  const navigate = useNavigate()
+  const [token, setToken] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
-    const storedToken = localStorage.getItem('token')
-    setToken(storedToken)
-  }, [])
+    const storedToken = localStorage.getItem("token");
+    setToken(storedToken);
+  }, []);
 
   function handleLogout() {
-    localStorage.removeItem('token')
-    setToken(null)
-    navigate('/login')
+    localStorage.removeItem("token");
+    setToken(null);
+    navigate("/login");
   }
 
   return (
@@ -38,9 +38,20 @@ export default function Header() {
             >
               Meus Agendamentos
             </Link>
-            <Link to="/admin/servicos" className="hover:text-gray-300 transition">
+            <Link
+              to="/admin/servicos"
+              className="hover:text-gray-300 transition"
+            >
               Admin
             </Link>
+
+            <Link
+              to="/admin/resumo-agendamentos"
+              className="block px-4 py-2 rounded hover:bg-gray-200"
+            >
+              📊 Resumo de Agendamentos
+            </Link>
+
             <Link to="/admin/horarios">Gerenciar horários</Link>
             <button
               onClick={handleLogout}
@@ -63,5 +74,5 @@ export default function Header() {
         )}
       </nav>
     </header>
-  )
+  );
 }

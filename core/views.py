@@ -6,6 +6,10 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from datetime import datetime
+from django.db.models import Count
+from collections import defaultdict
+from decimal import Decimal
+
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -99,7 +103,20 @@ class AgendamentoViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return Agendamento.objects.filter(usuario=self.request.user)
+        user = self.request.user
+        qs = Agendamento.objects.all()
+
+        # Se não for admin, mostra apenas os agendamentos do usuário
+        if not user.is_staff:
+            qs = qs.filter(usuario=user)
+
+        # Filtra por data se fornecida na querystring
+        data = self.request.query_params.get('data')
+        if data:
+            qs = qs.filter(data=data)
+
+        return qs
+
 
     def perform_create(self, serializer):
         data = serializer.validated_data.get("data")
@@ -129,6 +146,45 @@ class HorarioDisponivelViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         return HorarioDisponivel.objects.filter(barbearia__proprietario=self.request.user)
+    
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def resumo_agendamentos(request):
+    queryset = Agendamento.objects.select_related('usuario', 'servico')
 
+    if not request.user.is_staff:
+        queryset = queryset.filter(usuario=request.user)
+
+    dados = {}
+
+    for ag in queryset:
+        data_str = ag.data.strftime("%Y-%m-%d")
+        if data_str not in dados:
+            dados[data_str] = {
+                "data": data_str,
+                "total": 0,
+                "usuarios": set(),
+                "servicos": defaultdict(int),
+                "faturamento": Decimal("0.00")
+            }
+
+        dados[data_str]["total"] += 1
+        dados[data_str]["usuarios"].add(ag.usuario.username)
+        nome_servico = ag.servico.nome
+        dados[data_str]["servicos"][nome_servico] += 1
+        dados[data_str]["faturamento"] += ag.servico.preco  # 💰
+
+    resultado = []
+    for d in sorted(dados.keys()):
+        resumo = dados[d]
+        resultado.append({
+            "data": resumo["data"],
+            "total": resumo["total"],
+            "usuarios": len(resumo["usuarios"]),
+            "servicos": resumo["servicos"],
+            "faturamento": float(resumo["faturamento"])
+        })
+
+    return Response(resultado)
 
 

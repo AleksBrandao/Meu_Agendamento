@@ -9,8 +9,25 @@ export default function PainelAdminAgendamentos() {
   const [dataSelecionada, setDataSelecionada] = useState<Date | null>(new Date());
   const [agendamentos, setAgendamentos] = useState<any[]>([]);
   const [mensagem, setMensagem] = useState("");
+  const [diasComHorarios, setDiasComHorarios] = useState<number[]>([]);
 
   const token = localStorage.getItem("token");
+
+  const isDiaPermitido = (date: Date) => {
+    const dia = date.getDay();
+    return diasComHorarios.includes(dia);
+  };
+
+  useEffect(() => {
+    axios.get("http://localhost:8000/api/horarios-disponiveis/", {
+      headers: { Authorization: `Token ${token}` }
+    })
+    .then(res => {
+      const dias = [...new Set(res.data.map((h: any) => h.dia_semana))];
+      setDiasComHorarios(dias);
+    })
+    .catch(() => setMensagem("Erro ao carregar dias com horários."));
+  }, []);
 
   useEffect(() => {
     if (!dataSelecionada) return;
@@ -20,7 +37,10 @@ export default function PainelAdminAgendamentos() {
     axios.get(`http://localhost:8000/api/agendamentos/?data=${dataStr}`, {
       headers: { Authorization: `Token ${token}` },
     })
-    .then((res) => setAgendamentos(res.data))
+    .then((res) => {
+      const agendamentosOrdenados = res.data.sort((a: any, b: any) => a.hora.localeCompare(b.hora));
+      setAgendamentos(agendamentosOrdenados);
+    })
     .catch(() => setMensagem("Erro ao carregar agendamentos."));
   }, [dataSelecionada]);
 
@@ -35,6 +55,8 @@ export default function PainelAdminAgendamentos() {
           onChange={(date: Date) => setDataSelecionada(date)}
           dateFormat="dd/MM/yyyy"
           locale={ptBR}
+          filterDate={isDiaPermitido}
+          minDate={new Date()}
           className="p-2 border rounded w-full max-w-xs"
         />
       </div>
