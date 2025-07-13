@@ -12,6 +12,8 @@ class ServicoSerializer(serializers.ModelSerializer):
 class AgendamentoSerializer(serializers.ModelSerializer):
     usuario_nome = serializers.CharField(source='usuario.username', read_only=True)
     servico_nome = serializers.CharField(source='servico.nome', read_only=True)
+    preco = serializers.DecimalField(source='servico.preco', max_digits=6, decimal_places=2, read_only=True)
+
 
     class Meta:
         model = Agendamento

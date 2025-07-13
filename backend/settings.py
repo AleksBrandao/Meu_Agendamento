@@ -25,7 +25,17 @@ SECRET_KEY = 'django-insecure-#rzi7zsf0bk%ycyr17m5-jfxij%)t(6bn4qi_n&^971%p*d1g+
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [
+    "localhost",
+    "127.0.0.1",
+    "94a4f4cfed2f.ngrok-free.app",  # domínio do ngrok atual
+    "https://5f0cb843e5a8.ngrok-free.app",  # substitua pelo seu domínio ngrok atual
+]
+
+CSRF_TRUSTED_ORIGINS = [
+    "https://5f0cb843e5a8.ngrok-free.app",  # frontend
+    "https://94a4f4cfed2f.ngrok-free.app",             # backend exposto
+]
 
 
 # Application definition
@@ -63,6 +73,8 @@ REST_FRAMEWORK = {
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",  # React local
+    "https://5f0cb843e5a8.ngrok-free.app",  # frontend
+    "https://94a4f4cfed2f.ngrok-free.app",             # backend exposto
 ]
 
 DJOSER = {

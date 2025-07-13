@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import DatePicker from "react-datepicker";
 import ptBR from "date-fns/locale/pt-BR";
+const apiUrl = import.meta.env.VITE_API_URL;
 
 export default function Agendar() {
   const [servicos, setServicos] = useState<any[]>([]);

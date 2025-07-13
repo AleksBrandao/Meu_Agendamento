@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import axios from 'axios'
+const apiUrl = import.meta.env.VITE_API_URL;
 
 type Agendamento = {
   id: number
@@ -18,6 +19,8 @@ export default function MeusAgendamentos() {
   useEffect(() => {
     const token = localStorage.getItem('token')
 
+    // axios.get('https://5f0cb843e5a8.ngrok-free.app/api/agendamentos/', {
+      
     axios.get('http://localhost:8000/api/agendamentos/', {
       headers: {
         Authorization: `Token ${token}`

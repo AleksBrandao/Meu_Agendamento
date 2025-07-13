@@ -2,6 +2,7 @@ import { useState } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
+const apiUrl = import.meta.env.VITE_API_URL;
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -11,7 +12,8 @@ export default function Login() {
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
     try {
-      const response = await axios.post('http://localhost:8000/auth/token/login/', {
+      // const response = await axios.post('http://localhost:8000/auth/token/login/', {
+      const response = await axios.post('https://94a4f4cfed2f.ngrok-free.app/auth/token/login/', {
         username: email,
         password: senha,
       });

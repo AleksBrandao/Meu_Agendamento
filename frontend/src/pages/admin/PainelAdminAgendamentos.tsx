@@ -4,6 +4,7 @@ import DatePicker from "react-datepicker";
 import ptBR from "date-fns/locale/pt-BR";
 import { format } from "date-fns";
 import "react-datepicker/dist/react-datepicker.css";
+const apiUrl = import.meta.env.VITE_API_URL;
 
 export default function PainelAdminAgendamentos() {
   const [dataSelecionada, setDataSelecionada] = useState<Date | null>(new Date());
