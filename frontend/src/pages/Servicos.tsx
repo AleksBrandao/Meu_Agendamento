@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
-import axios from 'axios';
-const apiUrl = import.meta.env.VITE_API_URL;
+import api from '../api';
 
 type Servico = {
   id: number;
@@ -14,9 +13,7 @@ export default function Servicos() {
   const [erro, setErro] = useState('');
 
   useEffect(() => {
-    // axios.get('http://localhost:8000/api/servicos/')
-    axios.get('https://5f0cb843e5a8.ngrok-free.app/api/servicos/')
-
+    api.get('/api/servicos/')
       .then(response => setServicos(response.data))
       .catch(error => {
         console.error(error);

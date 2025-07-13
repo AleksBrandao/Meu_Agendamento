@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
-import axios from 'axios'
-const apiUrl = import.meta.env.VITE_API_URL;
+import api from '../api';
 
 type Agendamento = {
   id: number
@@ -17,18 +16,11 @@ export default function MeusAgendamentos() {
   const [erro, setErro] = useState('')
 
   useEffect(() => {
-    const token = localStorage.getItem('token')
-
-    // axios.get('https://5f0cb843e5a8.ngrok-free.app/api/agendamentos/', {
-      
-    axios.get('http://localhost:8000/api/agendamentos/', {
-      headers: {
-        Authorization: `Token ${token}`
-      }
-    })
-    .then(res => setAgendamentos(res.data))
-    .catch(() => setErro('Erro ao carregar seus agendamentos.'))
-  }, [])
+    api
+      .get('/api/agendamentos/')
+      .then((res) => setAgendamentos(res.data))
+      .catch(() => setErro('Erro ao carregar seus agendamentos.'));
+  }, []);
 
   return (
     <div className="min-h-screen bg-black text-white p-8">

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
-const apiUrl = import.meta.env.VITE_API_URL;
+import api from '../api';
 
 export default function Cadastro() {
   const [email, setEmail] = useState('');
@@ -12,11 +12,12 @@ export default function Cadastro() {
   async function handleCadastro(e: React.FormEvent) {
     e.preventDefault();
     try {
-      await axios.post('http://localhost:8000/auth/users/', {
+      await api.post('/auth/users/', {
         username: email,
         email: email,
         password: senha,
       });
+  
       alert('Cadastro realizado com sucesso!');
       setErro('');
       navigate('/login');

@@ -4,10 +4,12 @@ import DatePicker from "react-datepicker";
 import ptBR from "date-fns/locale/pt-BR";
 import { format } from "date-fns";
 import "react-datepicker/dist/react-datepicker.css";
-const apiUrl = import.meta.env.VITE_API_URL;
+import api from "../../api";
 
 export default function PainelAdminAgendamentos() {
-  const [dataSelecionada, setDataSelecionada] = useState<Date | null>(new Date());
+  const [dataSelecionada, setDataSelecionada] = useState<Date | null>(
+    new Date()
+  );
   const [agendamentos, setAgendamentos] = useState<any[]>([]);
   const [mensagem, setMensagem] = useState("");
   const [diasComHorarios, setDiasComHorarios] = useState<number[]>([]);
@@ -20,14 +22,13 @@ export default function PainelAdminAgendamentos() {
   };
 
   useEffect(() => {
-    axios.get("http://localhost:8000/api/horarios-disponiveis/", {
-      headers: { Authorization: `Token ${token}` }
-    })
-    .then(res => {
-      const dias = [...new Set(res.data.map((h: any) => h.dia_semana))];
-      setDiasComHorarios(dias);
-    })
-    .catch(() => setMensagem("Erro ao carregar dias com horários."));
+    api
+      .get("/api/horarios-disponiveis/")
+      .then((res) => {
+        const dias = [...new Set(res.data.map((h: any) => h.dia_semana))];
+        setDiasComHorarios(dias);
+      })
+      .catch(() => setMensagem("Erro ao carregar dias com horários."));
   }, []);
 
   useEffect(() => {
@@ -35,14 +36,15 @@ export default function PainelAdminAgendamentos() {
 
     const dataStr = format(dataSelecionada, "yyyy-MM-dd");
 
-    axios.get(`http://localhost:8000/api/agendamentos/?data=${dataStr}`, {
-      headers: { Authorization: `Token ${token}` },
-    })
-    .then((res) => {
-      const agendamentosOrdenados = res.data.sort((a: any, b: any) => a.hora.localeCompare(b.hora));
-      setAgendamentos(agendamentosOrdenados);
-    })
-    .catch(() => setMensagem("Erro ao carregar agendamentos."));
+    api
+      .get(`/api/agendamentos/?data=${dataStr}`)
+      .then((res) => {
+        const agendamentosOrdenados = res.data.sort((a: any, b: any) =>
+          a.hora.localeCompare(b.hora)
+        );
+        setAgendamentos(agendamentosOrdenados);
+      })
+      .catch(() => setMensagem("Erro ao carregar agendamentos."));
   }, [dataSelecionada]);
 
   return (

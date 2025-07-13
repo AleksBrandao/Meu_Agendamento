@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
 import { toast } from "react-toastify";
-const apiUrl = import.meta.env.VITE_API_URL;
+import api from "../api";
+
 
 type Servico = {
   id: number;
@@ -22,13 +22,16 @@ export default function AdminServicos() {
   useEffect(() => {
     carregarServicos();
   }, []);
-
+  
   function carregarServicos() {
-    axios
-      .get("http://localhost:8000/api/servicos/")
-      .then((res) => setServicos(res.data));
+    api
+      .get("/api/servicos/")
+      .then((res) => setServicos(res.data))
+      .catch((err) => {
+        console.error("Erro ao carregar serviços:", err);
+        // opcional: setErro('Erro ao carregar serviços.')
+      });
   }
-
   function limparFormulario() {
     setNome("");
     setPreco("");
@@ -38,45 +41,39 @@ export default function AdminServicos() {
 
   async function handleSalvar(e: React.FormEvent) {
     e.preventDefault();
-
+  
     const dados = {
       nome,
       preco,
       duracao_minutos: Number(duracao),
     };
-
+  
     try {
       if (editando) {
-        await axios.put(
-          `http://localhost:8000/api/servicos/${editando}/`,
-          dados,
-          {
-            headers: { Authorization: `Token ${token}` },
-          }
-        );
+        await api.put(`/api/servicos/${editando}/`, dados);
         toast.success("Serviço atualizado com sucesso!");
       } else {
-        await axios.post("http://localhost:8000/api/servicos/", dados, {
-          headers: { Authorization: `Token ${token}` },
-        });
+        await api.post("/api/servicos/", dados);
         toast.success("Serviço criado com sucesso!");
       }
+  
       carregarServicos();
       limparFormulario();
-    } catch {
+    } catch (error) {
+      console.error("Erro ao salvar serviço:", error);
       toast.error("Erro ao salvar serviço.");
     }
   }
 
   async function handleExcluir(id: number) {
     if (!confirm("Deseja excluir este serviço?")) return;
+  
     try {
-      await axios.delete(`http://localhost:8000/api/servicos/${id}/`, {
-        headers: { Authorization: `Token ${token}` },
-      });
+      await api.delete(`/api/servicos/${id}/`);
       toast.success("Serviço excluído.");
       carregarServicos();
-    } catch {
+    } catch (error) {
+      console.error("Erro ao excluir serviço:", error);
       toast.error("Erro ao excluir serviço.");
     }
   }

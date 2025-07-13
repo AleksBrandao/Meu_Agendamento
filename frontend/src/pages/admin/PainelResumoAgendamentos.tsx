@@ -4,7 +4,7 @@ import DatePicker from "react-datepicker";
 import ptBR from "date-fns/locale/pt-BR";
 import { format, isWithinInterval, parseISO } from "date-fns";
 import "react-datepicker/dist/react-datepicker.css";
-const apiUrl = import.meta.env.VITE_API_URL;
+import api from "../../api";
 
 interface DetalheServico {
   data: string;
@@ -21,12 +21,12 @@ export default function PainelResumoAgendamentos() {
   const [fim, setFim] = useState<Date | null>(null);
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    axios.get("http://localhost:8000/api/agendamentos/", {
-      headers: { Authorization: `Token ${token}` },
-    })
-    .then((res) => setDetalhes(res.data))
-    .catch(() => setMensagem("Erro ao carregar os detalhes dos agendamentos."));
+    api
+      .get("/api/agendamentos/")
+      .then((res) => setDetalhes(res.data))
+      .catch(() =>
+        setMensagem("Erro ao carregar os detalhes dos agendamentos.")
+      );
   }, []);
 
   const detalhesFiltrados = detalhes
@@ -42,7 +42,7 @@ export default function PainelResumoAgendamentos() {
     });
 
   const total = detalhesFiltrados.reduce((acc, d) => {
-    const preco = typeof d.preco === 'number' ? d.preco : parseFloat(d.preco);
+    const preco = typeof d.preco === "number" ? d.preco : parseFloat(d.preco);
     return acc + (isNaN(preco) ? 0 : preco);
   }, 0);
 
@@ -97,7 +97,9 @@ export default function PainelResumoAgendamentos() {
                   <td className="p-2">{d.usuario_nome}</td>
                   <td className="p-2">{d.servico_nome}</td>
                   <td className="p-2">
-                    {typeof d.preco === 'number' ? `R$ ${d.preco.toFixed(2)}` : `R$ ${parseFloat(d.preco).toFixed(2)}`}
+                    {typeof d.preco === "number"
+                      ? `R$ ${d.preco.toFixed(2)}`
+                      : `R$ ${parseFloat(d.preco).toFixed(2)}`}
                   </td>
                 </tr>
               ))}

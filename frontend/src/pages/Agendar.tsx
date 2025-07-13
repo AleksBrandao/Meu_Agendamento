@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import DatePicker from "react-datepicker";
 import ptBR from "date-fns/locale/pt-BR";
-const apiUrl = import.meta.env.VITE_API_URL;
+import api from '../api';
 
 export default function Agendar() {
   const [servicos, setServicos] = useState<any[]>([]);
@@ -25,66 +25,55 @@ export default function Agendar() {
   };
 
   useEffect(() => {
-    axios
-      .get("http://localhost:8000/api/servicos/")
+    // Requisição 1: carregar serviços
+    api
+      .get('/api/servicos/')
       .then((res) => setServicos(res.data))
-      .catch(() => setMensagem("Erro ao carregar serviços."));
-
-    axios
-      .get("http://localhost:8000/api/horarios-disponiveis/", {
-        headers: { Authorization: `Token ${token}` },
-      })
+      .catch(() => setMensagem('Erro ao carregar serviços.'));
+  
+    // Requisição 2: carregar dias com horários disponíveis
+    api
+      .get('/api/horarios-disponiveis/')
       .then((res) => {
         const dias = [...new Set(res.data.map((h: any) => h.dia_semana))];
         setDiasComHorarios(dias);
       })
       .catch(() =>
-        setMensagem("Erro ao carregar dias com horários disponíveis.")
+        setMensagem('Erro ao carregar dias com horários disponíveis.')
       );
   }, []);
 
   useEffect(() => {
     if (!data) return;
-
+  
     const fetchHorariosParaData = async () => {
       try {
-        const res = await axios.get(
-          `http://localhost:8000/api/horarios-disponiveis-por-data/?data=${data}`,
-          {
-            headers: { Authorization: `Token ${token}` },
-          }
-        );
-
+        const res = await api.get(`/api/horarios-disponiveis-por-data/?data=${data}`);
         setHorariosParaDia(res.data);
       } catch (err) {
         console.error(err);
         setHorariosParaDia([]);
       }
     };
-
+  
     fetchHorariosParaData();
   }, [data]);
 
   async function handleAgendamento(e: React.FormEvent) {
     e.preventDefault();
     setMensagem("");
+  
     try {
-      await axios.post(
-        "http://localhost:8000/api/agendamentos/",
-        {
-          servico: servicoId,
-          data,
-          hora,
-        },
-        {
-          headers: {
-            Authorization: `Token ${token}`,
-          },
-        }
-      );
+      await api.post("/api/agendamentos/", {
+        servico: servicoId,
+        data,
+        hora,
+      });
+  
       setMensagem("✅ Agendamento realizado com sucesso!");
       navigate("/");
-    } catch {
+    } catch (error) {
+      console.error("Erro ao agendar:", error);
       setMensagem("❌ Não foi possível agendar. Verifique os dados.");
     }
   }
